@@ -31,6 +31,7 @@ Complete guide for running this project locally and deploying to AWS.
 
 ### 1. Setup Environment
 
+**PowerShell (Windows):**
 ```powershell
 # Navigate to project
 cd C:\Users\danpl\projects\utilities\employee-sentiment
@@ -40,8 +41,19 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
+**Bash (Linux/Mac):**
+```bash
+# Navigate to project
+cd ~/projects/utilities/employee-sentiment
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
 ### 2. Run Tests Locally
 
+**PowerShell (Windows):**
 ```powershell
 # Run all tests
 pytest
@@ -56,9 +68,27 @@ pytest tests/unit/test_sentiment_analyzer.py -v
 start htmlcov/index.html
 ```
 
+**Bash (Linux/Mac):**
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_sentiment_analyzer.py -v
+
+# View coverage report (Linux)
+xdg-open htmlcov/index.html
+# Or on Mac
+open htmlcov/index.html
+```
+
 ### 3. Local Code Quality Checks
 
-```powershell
+**PowerShell & Bash (same commands):**
+```bash
 # Format code
 black src tests
 
@@ -70,7 +100,7 @@ mypy src --ignore-missing-imports
 ```
 
 ### 4. Test Lambda Function Locally
-
+**PowerShell (Windows):**
 ```powershell
 # Create test event
 $testEvent = @{
@@ -100,10 +130,42 @@ print('Lambda handler is valid and importable')
 "
 ```
 
+**Bash (Linux/Mac):**
+**PowerShell & Bash (same commands):**
+```bash
+# Create test event
+cat > test_event.json <<EOF
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {"name": "test-bucket"},
+        "object": {"key": "test-feedback.csv"}
+      }
+    }
+  ]
+}
+EOF
+$testEvent | Out-File -FilePath test_event.json
+
+# Test with Python
+python -c "
+import json
+from src.lambda_functions.sentiment_analyzer import lambda_handler
+
+with open('test_event.json', 'r') as f:
+    event = json.load(f)
+    
+# Note: Will fail without AWS resources, but validates code structure
+print('Lambda handler is valid and importable')
+"
+```
+
 ### 5. Test Individual Functions
 
 ```powershell
-# Test data processing
+**PowerShell & Bash (same commands):**
+```bashrocessing
 python -c "
 from src.utils.data_processing import parse_csv_from_string
 
@@ -148,7 +210,8 @@ aws configure
 aws sts get-caller-identity
 ```
 
-### Step 2: Deploy Infrastructure with Terraform
+**PowerShell & Bash (same commands):**
+```basheploy Infrastructure with Terraform
 
 ```powershell
 # Navigate to Terraform directory
@@ -177,8 +240,7 @@ terraform output
 - IAM roles and policies
 - CloudWatch log groups
 
-### Step 3: Upload Sample Data
-
+**PowerShell (Windows):**
 ```powershell
 # Get bucket name from Terraform output
 $bucketName = terraform output -raw feedback_bucket_name
@@ -190,8 +252,8 @@ aws s3 cp ../../data/sample_feedback.csv s3://$bucketName/feedback/sample_feedba
 aws s3 ls s3://$bucketName/feedback/
 ```
 
-### Step 4: Monitor Execution
-
+**Bash (Linux/Mac):**
+**PowerShell (Windows):**
 ```powershell
 # View Lambda logs
 aws logs tail /aws/lambda/sentiment-analyzer --follow
@@ -206,34 +268,35 @@ aws athena start-query-execution `
     --result-configuration "OutputLocation=s3://$bucketName/athena-results/"
 ```
 
-### Step 5: Setup QuickSight Dashboard (Optional)
+**Bash (Linux/Mac):**
+```bash
+# View Lambda logs
+aws logs tail /aws/lambda/sentiment-analyzer --follow
 
-1. **Enable QuickSight**:
-   - Go to AWS Console → QuickSight
-   - Sign up for QuickSight (30-day free trial)
-   - Choose Standard Edition
+# Check DynamoDB table
+TABLE_NAME=$(terraform output -raw dynamodb_table_name)
+aws dynamodb scan --table-name $TABLE_NAME --max-items 5
 
-2. **Connect to Athena**:
-   - Create new dataset
-   - Select Athena as source
-   - Choose `sentiment_analysis` database
-   - Select `sentiment_results` table
+# Query Athena
+aws athena start-query-execution \
+    --query-string "SELECT * FROM sentiment_results LIMIT 10" \
+    --result-configuration "OutputLocation=s3://$BUCKET_NAME
 
-3. **Create Visualizations**:
-   - Sentiment distribution (pie chart)
-   - Sentiment by department (bar chart)
-   - Sentiment over time (line chart)
-   - Negative feedback word cloud
-
-Full instructions: [quicksight/README.md](quicksight/README.md)
-
----
-
-## 🔄 Development Workflow
-
-### Making Changes
+### Step 4: Monitor Execution
 
 ```powershell
+# View Lambda logs
+aws logs tail /aws/lambda/sentiment-analyzer --follow
+
+# Check DynamoDB table
+$tableName = terraform output -raw dynamodb_table_name
+aws dynamodb scan --table-name $tableName --max-items 5
+
+# Query Athena
+aws athena start-query-execution `
+    --query-string "SELECT * FROM sentiment_results LIMIT 10" `
+**PowerShell & Bash (same commands):**
+```bash
 # 1. Create feature branch
 git checkout -b feature/your-feature-name
 
@@ -260,20 +323,85 @@ git push origin feature/your-feature-name
 
 ### Updating AWS Deployment
 
+**PowerShell & Bash (same commands):**
+```bash
+### Making Changes
+
 ```powershell
-# After making code changes
-cd infrastructure/terraform
+# 1. Create feature branch
+git checkout -b feature/your-feature-name
 
-# Update Lambda function code
-terraform apply -auto-approve
+# 2. Make code changes
+# Edit files in src/
 
-# Or redeploy specific resource
-terraform taint aws_lambda_function.sentiment_analyzer
-terraform apply
+# 3. Run tests
+pytest
+
+# 4. Format and lint
+black src tests
+flake8 src tests
+
+# 5. Commit changes
+git add .
+git commit -m "Description of changes"
+
+# 6. Push to GitHub
+git push origin feature/your-feature-name
+
+# 7. Create Pull Request on GitHub
+# GitHub Actions will run tests automatically
+
+**PowerShell (Windows):**
+```powershell
+# Upload test file
+aws s3 cp test_feedback.csv s3://$bucketName/feedback/test_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv
+
+# Watch logs in real-time
+aws logs tail /aws/lambda/sentiment-analyzer --follow --since 1m
+
+# Check results in DynamoDB
+aws dynamodb scan --table-name $tableName --max-items 10 --query 'Items[?feedback_id==`fb_test_001`]'
 ```
 
----
+**Bash (Linux/Mac):**
+```bash
+# Upload test file
+aws s3 cp test_feedback.csv s3://$BUCKET_NAME/feedback/test_$(date +%Y%m%d_%H%M%S).csv
+**PowerShell (Windows):**
+```powershell
+# Get function info
+aws lambda get-function --function-name sentiment-analyzer
 
+# View recent invocations
+aws lambda get-function --function-name sentiment-analyzer --query 'Configuration.[LastModified,State,StateReason]'
+
+# Check CloudWatch metrics
+aws cloudwatch get-metric-statistics `
+    --namespace AWS/Lambda `
+    --metric-name Invocations `
+    --dimensions Name=FunctionName,Value=sentiment-analyzer `
+    --start-time (Get-Date).AddHours(-1) `
+    --end-time (Get-Date) `
+    --period 3600 `
+    --statistics Sum
+```
+
+**Bash (Linux/Mac):**
+```bash
+# Get function info
+aws lambda get-function --function-name sentiment-analyzer
+
+# View recent invocations
+aws lambda get-function --function-name sentiment-analyzer --query 'Configuration.[LastModified,State,StateReason]'
+
+# Check CloudWatch metrics
+aws cloudwatch get-metric-statistics \
+    --namespace AWS/Lambda \
+    --metric-name Invocations \
+    --dimensions Name=FunctionName,Value=sentiment-analyzer \
+    --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+    --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+   bash3600 \
 ## 🧪 Testing in AWS
 
 ### Upload Test File
@@ -307,31 +435,57 @@ aws dynamodb scan --table-name $tableName --max-items 10 --query 'Items[?feedbac
 ```powershell
 # Get function info
 aws lambda get-function --function-name sentiment-analyzer
-
-# View recent invocations
-aws lambda get-function --function-name sentiment-analyzer --query 'Configuration.[LastModified,State,StateReason]'
-
-# Check CloudWatch metrics
-aws cloudwatch get-metric-statistics `
-    --namespace AWS/Lambda `
-    --metric-name Invocations `
-    --dimensions Name=FunctionName,Value=sentiment-analyzer `
-    --start-time (Get-Date).AddHours(-1) `
-    --end-time (Get-Date) `
-    --period 3600 `
-    --statistics Sum
-```
-
-### Common Issues
-
-**Issue: Lambda timeout**
+**PowerShell (Windows):**
 ```powershell
-# Increase timeout in main.tf
-# Change timeout from 60 to 300 seconds
-cd infrastructure/terraform
-terraform apply
+# Get cost estimates
+aws ce get-cost-and-usage `
+    --time-period Start=2025-12-01,End=2025-12-28 `
+    --granularity MONTHLY `
+    --metrics UnblendedCost `
+    --group-by Type=SERVICE
 ```
 
+**Bash (Linux/Mac):**
+```bash
+# Get cost estimates
+aws ce get-cost-and-usage \
+    --time-period Start=2025-12-01,End=2025-12-28 \
+    --granularity MONTHLY \
+    --metrics UnblendedCost \tistics `
+**PowerShell & Bash (same commands):**
+```bash
+cd infrastructure/terraform
+
+# Preview what will be destroyed
+terraform plan -destroy
+
+# Destroy all resources
+terraform destroy
+
+# Type 'yes' when prompted
+```
+
+**Important**: Empty S3 bucket first if you have data you want to keep:
+
+**PowerShell (Windows):**
+```powershell
+# Backup data
+aws s3 sync s3://$bucketName ./backup/
+
+# Empty bucket
+aws s3 rm s3://$bucketName --recursive
+
+# Then destroy
+terraform destroy
+```
+
+**Bash (Linux/Mac):**
+```bash
+# Backup data
+aws s3 sync s3://$BUCKET_NAME ./backup/
+
+# Empty bucket
+aws s3 rm s3://$BUCKET_NAME
 **Issue: Permission errors**
 - Check IAM roles in [infrastructure/terraform/iam.tf](infrastructure/terraform/iam.tf)
 - Verify Lambda has permissions for S3, DynamoDB, Comprehend
@@ -363,19 +517,37 @@ cd infrastructure/terraform
 
 # Preview what will be destroyed
 terraform plan -destroy
+**PowerShell (Windows):**
+```powershell
+# Complete local setup
+cd C:\Users\danpl\projects\utilities\employee-sentiment
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
 
-# Destroy all resources
-terraform destroy
-
-# Type 'yes' when prompted
+# Complete AWS deployment
+aws configure
+cd infrastructure/terraform
+terraform init
+terraform apply
+$bucketName = terraform output -raw feedback_bucket_name
+aws s3 cp ../../data/sample_feedback.csv s3://$bucketName/feedback/sample.csv
+aws logs tail /aws/lambda/sentiment-analyzer --follow
 ```
 
-**Important**: Empty S3 bucket first if you have data you want to keep:
-```powershell
-# Backup data
-aws s3 sync s3://$bucketName ./backup/
+**Bash (Linux/Mac):**
+```bash
+# Complete local setup
+cd ~/projects/utilities/employee-sentiment
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
 
-# Empty bucket
+# Complete AWS deployment
+aws configure
+cd infrastructure/terraform
+terraform init
+terraform apply
+BUCKET_NAME=$(terraform output -raw feedback_bucket_name)
+aws s3 cp ../../data/sample_feedback.csv s3://$BUCKET_NAME
 aws s3 rm s3://$bucketName --recursive
 
 # Then destroy
