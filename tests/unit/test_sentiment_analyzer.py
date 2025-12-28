@@ -53,12 +53,45 @@ def test_lambda_handler_success(mock_s3_event, sample_csv_content):
         BillingMode="PAY_PER_REQUEST"
     )
     
-    # This test would need the actual lambda_handler imported
-    # Skipping actual import for now as we need to set up environment
-    assert True  # Placeholder
+    # Mock the Comprehend client to avoid actual API calls
+    with patch('boto3.client') as mock_boto_client:
+        mock_comprehend = MagicMock()
+        mock_comprehend.batch_detect_sentiment.return_value = {
+            'ResultList': [
+                {'Index': 0, 'Sentiment': 'POSITIVE', 'SentimentScore': {'Positive': 0.95}},
+                {'Index': 1, 'Sentiment': 'NEGATIVE', 'SentimentScore': {'Negative': 0.85}}
+            ]
+        }
+        
+        def client_selector(service_name, **kwargs):
+            if service_name == 's3':
+                return s3
+            elif service_name == 'dynamodb':
+                return boto3.client('dynamodb', region_name='us-east-1')
+            elif service_name == 'comprehend':
+                return mock_comprehend
+            return MagicMock()
+        
+        mock_boto_client.side_effect = client_selector
+        
+        # Import here to use mocked clients
+        from src.lambda_functions.sentiment_analyzer import lambda_handler
+        
+        # Execute
+        response = lambda_handler(mock_s3_event, None)
+        
+        # Verify
+        assert response['statusCode'] == 200
+        assert 'Successfully processed' in response['body']
 
 
-def test_get_feedback_from_s3():
-    """Test S3 feedback retrieval."""
-    # Test would go here
-    assert True  # Placeholder
+def test_csv_parsing():
+    """Test CSV parsing functionality."""
+    from src.utils.data_processing import parse_csv
+    
+    csv_content = """feedback_id,employee_id,department,feedback_text
+fb_001,emp_123,Engineering,Great work"""
+    
+    result = parse_csv(csv_content)
+    assert len(result) == 1
+    assert result[0]['feedback_id'] == 'fb_001'
