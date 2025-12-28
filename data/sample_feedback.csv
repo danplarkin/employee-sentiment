@@ -1,0 +1,11 @@
+feedback_id,employee_id,department,feedback_text,date
+fb_001,emp_12345,Engineering,"I really enjoy working with my team. The collaboration is excellent and management is supportive.",2025-01-15
+fb_002,emp_23456,Marketing,"The workload has been overwhelming lately. I feel burnt out and need more support.",2025-01-16
+fb_003,emp_34567,Sales,"Great company culture! The benefits are fantastic and I feel valued here.",2025-01-17
+fb_004,emp_45678,HR,"The communication from leadership could be improved. Sometimes we're left in the dark.",2025-01-18
+fb_005,emp_56789,Engineering,"Love the flexibility with remote work. Work-life balance is perfect.",2025-01-19
+fb_006,emp_67890,Finance,"Salary increases haven't kept pace with inflation. Feeling undervalued financially.",2025-01-20
+fb_007,emp_78901,Operations,"The new project management tools have made our work much more efficient. Great decision!",2025-01-21
+fb_008,emp_89012,Engineering,"Too many meetings are cutting into productive coding time. Need better focus time.",2025-01-22
+fb_009,emp_90123,Marketing,"The training opportunities here are amazing. I've grown so much professionally.",2025-01-23
+fb_010,emp_01234,Sales,"Office environment is noisy and distracting. Hard to focus on important calls.",2025-01-24
